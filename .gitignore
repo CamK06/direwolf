@@ -109,7 +109,12 @@ $RECYCLE.BIN/
 *.dSYM
 
 # cmake
+<<<<<<< HEAD
 build/
 tmp/
 
 .vscode/
+=======
+build*/
+tmp/
+>>>>>>> dev
