@@ -1345,12 +1345,15 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 	    else if (strcasecmp(t,"EAS") == 0) {
 	      n = MAX_BAUD-2;	// Hack - See special case later.
 	    }
+		else if(strcasecmp(t,"CATS") == 0) {
+			n = MAX_BAUD-3;
+		}
 	    else {
 	      n = atoi(t);
 	    }
             if (n >= MIN_BAUD && n <= MAX_BAUD) {
 	      p_audio_config->achan[channel].baud = n;
-	      if (n != 300 && n != 1200 && n != 2400 && n != 4800 && n != 9600 && n != 19200 && n != MAX_BAUD-1 && n != MAX_BAUD-2) {
+	      if (n != 300 && n != 1200 && n != 2400 && n != 4800 && n != 9600 && n != 19200 && n != MAX_BAUD-1 && n != MAX_BAUD-2 && n != MAX_BAUD-3) {
 	        text_color_set(DW_COLOR_ERROR);
 	        dw_printf ("Line %d: Warning: Non-standard data rate of %d bits per second.  Are you sure?\n", line, n);
     	      }
@@ -1402,6 +1405,12 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 	      p_audio_config->achan[channel].space_freq = 1563;	// Actually 1562.5 - logic 0.
 	      // ? strlcpy (p_audio_config->achan[channel].profiles, "A", sizeof(p_audio_config->achan[channel].profiles));
 	    }
+		else if(p_audio_config->achan[channel].baud == MAX_BAUD-3) {
+			p_audio_config->achan[channel].modem_type = MODEM_CATS;
+			p_audio_config->achan[channel].baud = 9600;
+			p_audio_config->achan[channel].mark_freq = 0;
+			p_audio_config->achan[channel].space_freq = 0;
+		}
 	    else {
               p_audio_config->achan[channel].modem_type = MODEM_SCRAMBLE;
               p_audio_config->achan[channel].mark_freq = 0;

@@ -11,6 +11,7 @@ include_directories(
   ${SNDIO_INCLUDE_DIRS}
   ${CUSTOM_GEOTRANZ_DIR}
   ${CUSTOM_HIDAPI_DIR}
+  ../libCATS/include
   )
 
 if(WIN32 OR CYGWIN)
@@ -157,6 +158,7 @@ target_link_libraries(direwolf
   ${PORTAUDIO_LIBRARIES}
   ${SNDIO_LIBRARIES}
   ${AVAHI_LIBRARIES}
+  CATS
   )
 
 if(WIN32 OR CYGWIN)
@@ -380,6 +382,7 @@ target_link_libraries(atest
   ${GPSD_LIBRARIES}
   ${REGEX_LIBRARIES}
   Threads::Threads
+  CATS
   )
 
 if(WIN32 OR CYGWIN)

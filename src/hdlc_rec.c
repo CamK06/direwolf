@@ -112,6 +112,14 @@ struct hdlc_state_s {
 	int eas_plus_found;		/* "+" seen, indicating end of geographical area list. */
 
 	int eas_fields_after_plus;	/* Number of "-" characters after the "+". */
+
+	uint64_t cats_acc; /* Accumulator for CATS preamble */
+	
+	int cats_gathering; /* Decoding in progress */
+
+	int cats_header_found; /* Valid preamble+sync+length header received */
+
+	int cats_len; /* Length of incoming packet */
 };
 
 static struct hdlc_state_s hdlc_state[MAX_CHANS][MAX_SUBCHANS][MAX_SLICERS];
@@ -191,6 +199,64 @@ static int my_rand (void) {
 	return (seed);
 }
 
+
+#define CATS_PREAMBLE 0x55555555ABCDEF12ULL
+//#define CATS_SYNC 0xABCDEF12
+#define CATS_MAX_LEN 8192
+
+static void cats_rec_bit(int chan, int subchan, int slice, int raw, int future_use)
+{
+	struct hdlc_state_s *H;
+	H = &hdlc_state[chan][subchan][slice];
+	
+	H->oacc <<= 1;
+	H->cats_acc <<= 1;
+	if (raw) {
+		H->cats_acc |= 0x1;
+		H->oacc |= 0x1;
+	}
+
+	int done = 0;
+	
+	if(H->cats_acc == CATS_PREAMBLE) {
+		H->olen = 0;
+		H->frame_len = 0;
+		H->cats_header_found = 0;
+		H->cats_gathering = 1;
+		//printf("%d: CATS Preamble Found!\n", slice);
+	}
+	else if(H->cats_gathering) {
+		H->olen++;
+		if (H->olen == 8) {
+			uint8_t ch = H->oacc;
+			H->frame_buf[H->frame_len++] = ch;
+			H->olen = 0;
+		}
+
+		if(!H->cats_header_found && H->frame_len == 2) { // Packet length has been received
+			H->cats_len = H->frame_buf[0] | (H->frame_buf[1] >> 7);
+			H->cats_header_found = 1;
+			H->frame_len = 0;
+			//printf("%d: CATS Length: %d\n", slice, H->cats_len);
+		}
+		else if(H->cats_header_found) {
+			if(H->frame_len > H->cats_len || H->frame_len > MAX_FRAME_LEN) { // Packet is too long TODO: Support full size CATS packets, current limit is somewhere around 2K
+				//printf("%d: Reject too long\n", slice);
+				H->cats_gathering = 0;
+				return;
+			}
+			else if(H->frame_len == H->cats_len) {
+				done = 1;
+			}
+		} 
+	}
+
+	if(done) {
+		alevel_t alevel = demod_get_audio_level(chan, subchan);
+		multi_modem_process_rec_frame(chan, subchan, slice, H->frame_buf, H->frame_len, alevel, 0, 0);
+		H->cats_gathering = 0;
+	}
+}
 
 /***********************************************************************************
  *
@@ -457,10 +523,14 @@ void hdlc_rec_bit (int chan, int subchan, int slice, int raw, int is_scrambled, 
 	  }
 	}
 
-// EAS does not use HDLC.
+// EAS does not use HDLC. 
 
 	if (g_audio_p->achan[chan].modem_type == MODEM_EAS) {
 	  eas_rec_bit (chan, subchan, slice, raw, not_used_remove);
+	  return;
+	}
+	else if(g_audio_p->achan[chan].modem_type == MODEM_CATS) {
+	  cats_rec_bit(chan, subchan, slice, raw, not_used_remove);
 	  return;
 	}
 

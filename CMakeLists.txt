@@ -369,6 +369,7 @@ add_subdirectory(${CUSTOM_GEOTRANZ_DIR})
 add_subdirectory(${CUSTOM_REGEX_DIR})
 add_subdirectory(${CUSTOM_HIDAPI_DIR})
 add_subdirectory(${CUSTOM_MISC_DIR})
+add_subdirectory(libCATS)
 
 # direwolf source code and utilities
 add_subdirectory(src)

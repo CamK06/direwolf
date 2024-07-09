@@ -104,6 +104,12 @@
 #include "version.h"
 #include "ais.h"
 
+#include <cats/packet.h>
+#include <cats/whisker.h>
+#include <cats/error.h>
+#include <cats/interleaver.h>
+#include <cats/whitener.h>
+#include <cats/ldpc.h>
 
 
 // Properties of the radio channels.
@@ -342,6 +348,45 @@ void multi_modem_process_rec_frame (int chan, int subchan, int slice, unsigned c
 	  pp = ax25_from_text (monfmt, 1);
 
 	  // alevel gets in there somehow making me question why it is passed thru here.
+	}
+	else if (save_audio_config_p->achan[chan].modem_type == MODEM_CATS) {
+		char callsign[32];
+		char comment[255];
+
+		// Decode the CATS packet
+		cats_packet_t* pkt;
+		cats_packet_prepare(&pkt);
+		int r = cats_packet_decode(pkt, fbuf, flen);
+		if(r == CATS_FAIL) {
+			printf("CATS packet failed to decode!\n");
+			cats_packet_destroy(&pkt);
+			return;
+		}
+
+		// Identification
+		cats_whisker_data_t* whisker;
+		r = cats_packet_get_identification(pkt, (cats_ident_whisker_t**)&whisker);
+		if(r == CATS_FAIL) {
+			printf("CATS packet failed to get ID! %s\n", cats_error_str);
+			cats_packet_destroy(&pkt);
+			return;
+		}
+		strncpy(callsign, (char*)whisker->identification.callsign, 32);
+		if(whisker->identification.ssid != 0 && whisker->identification.ssid <= 15) {
+			sprintf(callsign + strlen(callsign), "-%d", whisker->identification.ssid);
+		}
+
+		// Comment
+		r = cats_packet_get_comment(pkt, comment);
+		if(r == CATS_FAIL) {
+			strcpy(comment, "CATS");
+		}
+
+		char monfmt[300];
+		snprintf(monfmt, sizeof(monfmt), "%s>%s%1d%1d:>%s", callsign, APP_TOCALL, MAJOR_VERSION, MINOR_VERSION, comment);
+		pp = ax25_from_text (monfmt, 1);
+
+		cats_packet_destroy(&pkt);
 	}
 	else {
 	  pp = ax25_from_frame (fbuf, flen, alevel);
