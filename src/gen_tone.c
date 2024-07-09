@@ -547,6 +547,7 @@ void tone_gen_put_bit (int chan, int dat)
 	    case MODEM_BASEBAND:
 	    case MODEM_SCRAMBLE:
 	    case MODEM_AIS:
+		case MODEM_CATS:
 
 	      if (dat != prev_dat[chan]) {
 	        tone_phase[chan] += f1_change_per_sample[chan];
